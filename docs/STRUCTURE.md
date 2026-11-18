@@ -29,7 +29,7 @@ shared-parking/
 
 | 目录 | 职责 | 运行方式 | 阶段 |
 |---|---|---|---|
-| `backend/vision/` | 读视频帧 → 检测车辆 → 判定车位状态 → 写库 | 独立进程 | 1 |
+| `backend/vision/` | 车位状态检测（`detector.py`）+ 车牌识别（`plate.py`），独立进程 | 独立进程 | 1 |
 | `backend/flask/` | 业务接口：发布 / 预约 / 支付 / 核销 / 统计 | 独立进程 | 2-4 |
 | `frontend/` | Vue 3：车位看板、预约页、管理后台 | `npm run dev` | 5 |
 | `databases/` | 建表 / 初始化数据，`schema.sql` 是唯一建库入口 | 手动执行 | 2 |
