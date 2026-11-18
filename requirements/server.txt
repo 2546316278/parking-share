@@ -1,5 +1,5 @@
 # ---------- 服务组 ----------
-# Flask 业务后端（server/）。可安全安装：不涉及 CUDA / torch。
+# Flask 业务后端（backend/flask/）。可安全安装：不涉及 CUDA / torch。
 Flask==3.1.2
 Flask-Cors==6.0.1
 PyMySQL==1.4.6

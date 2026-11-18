@@ -12,16 +12,16 @@
 
 用法：
     # 单张图片
-    python detector.py --source demo.jpg --calib ../data/calibrations/demo.json --save out.jpg
+    python detector.py --source demo.jpg --calib ../../data/calibrations/demo.json --save out.jpg
 
     # 视频文件
-    python detector.py --source ../data/videos/parking.mp4 --calib ../data/calibrations/parking.json
+    python detector.py --source ../../data/videos/parking.mp4 --calib ../../data/calibrations/parking.json
 
     # 本机摄像头
-    python detector.py --source 0 --calib ../data/calibrations/parking.json
+    python detector.py --source 0 --calib ../../data/calibrations/parking.json
 
     # 无窗口批量跑，输出每帧 JSON
-    python detector.py --source ../data/videos/parking.mp4 --calib ... --no-show --log result.jsonl
+    python detector.py --source ../../data/videos/parking.mp4 --calib ... --no-show --log result.jsonl
 """
 import argparse
 import json

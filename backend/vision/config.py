@@ -9,8 +9,10 @@ import os
 from pathlib import Path
 
 # ==================== 路径 ====================
+# 本文件在 backend/vision/ 下，项目根 = 上两级
 VISION_DIR = Path(__file__).resolve().parent
-BASE_DIR = VISION_DIR.parent
+BACKEND_DIR = VISION_DIR.parent
+BASE_DIR = BACKEND_DIR.parent
 
 DATA_DIR = BASE_DIR / "data"
 VIDEO_DIR = DATA_DIR / "videos"

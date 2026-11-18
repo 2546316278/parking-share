@@ -16,9 +16,9 @@
     q / ESC    退出
 
 用法：
-    python calibrate.py --source ../data/videos/parking.mp4 --at 3
+    python calibrate.py --source ../../data/videos/parking.mp4 --at 3
     python calibrate.py --source demo.jpg --prefix B --start 10
-    python calibrate.py --source demo.jpg --load ../data/calibrations/demo.json
+    python calibrate.py --source demo.jpg --load ../../data/calibrations/demo.json
 """
 import argparse
 import json

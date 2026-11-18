@@ -21,21 +21,22 @@
 
 ```
 shared-parking/
-├── vision/                视觉服务（独立进程）
-│   ├── config.py          所有可调参数，调参只改这一个文件
-│   ├── calibrate.py       车位 ROI 标定工具
-│   ├── detector.py        车辆检测 + 占用判定 + 标注输出
-│   └── smoother.py        状态时序平滑
-├── server/                Flask 业务后端
-│   ├── models/            数据表 ORM 模型
-│   ├── routes/            接口蓝图
-│   └── services/          可复用业务逻辑（计费、核销等）
-├── web/                   Vue 3 前端
+├── backend/               服务端全部代码
+│   ├── vision/            视觉检测服务（独立进程）
+│   │   ├── config.py      所有可调参数，调参只改这一个文件
+│   │   ├── calibrate.py   车位 ROI 标定工具
+│   │   ├── detector.py    车辆检测 + 占用判定 + 标注输出
+│   │   └── smoother.py    状态时序平滑
+│   └── flask/             Flask 业务后端
+│       ├── models/        数据表 ORM 模型
+│       ├── routes/        接口蓝图
+│       └── services/      可复用业务逻辑（计费、核销）
+├── frontend/              Vue 3 前端
+├── databases/             建表脚本，schema.sql 为唯一入口
 ├── experiments/           论文对比实验，不进主链路
 │   └── outputs/           实验产物（不入库）
 ├── scripts/               一次性 / 维护脚本，不进主链路
 ├── tests/                 单元测试
-├── sql/                   建表脚本，schema.sql 为唯一入口
 ├── docs/
 │   ├── TECH_STACK.md      技术栈与选型决策
 │   └── STRUCTURE.md       目录与文件约定
@@ -71,21 +72,21 @@ conda activate yolov8_env
 
 ```bash
 python scripts/make_demo.py
-cd vision
-python detector.py --source ../data/samples/demo_parking.jpg \
-                   --calib ../data/calibrations/demo_parking.json \
-                   --save ../data/samples/demo_result.jpg
+cd backend\vision
+python detector.py --source ..\..\data\samples\demo_parking.jpg ^
+                   --calib ..\..\data\calibrations\demo_parking.json ^
+                   --save ..\..\data\samples\demo_result.jpg
 ```
 
 预期输出：A01 占用、A02 空闲、A03 占用。
 
 ### 1. 标定车位（用真实素材）
 
-把停车场视频或图片放进 `data/videos/`，然后逐个框出车位：
+把停车场视频或图片放进 `data\videos\`，然后逐个框出车位：
 
 ```bash
-cd vision
-python calibrate.py --source ../data/videos/parking.mp4 --at 3
+cd backend\vision
+python calibrate.py --source ..\..\data\videos\parking.mp4 --at 3
 ```
 
 操作：左键点四个角 → 右键闭合 → 全部画完按 `s` 保存 → `q` 退出。
@@ -96,19 +97,19 @@ python calibrate.py --source ../data/videos/parking.mp4 --at 3
 ### 2. 跑检测
 
 ```bash
-cd vision
+cd backend\vision
 
 # 单张图片
-python detector.py --source ../data/videos/lot.jpg --calib ../data/calibrations/lot.json --save out.jpg
+python detector.py --source ..\..\data\videos\lot.jpg --calib ..\..\data\calibrations\lot.json --save out.jpg
 
 # 视频（弹窗预览，按 q 退出）
-python detector.py --source ../data/videos/parking.mp4 --calib ../data/calibrations/parking.json
+python detector.py --source ..\..\data\videos\parking.mp4 --calib ..\..\data\calibrations\parking.json
 
 # 摄像头
-python detector.py --source 0 --calib ../data/calibrations/parking.json
+python detector.py --source 0 --calib ..\..\data\calibrations\parking.json
 
 # 无窗口批量跑，输出逐帧结果
-python detector.py --source ../data/videos/parking.mp4 --calib ... --no-show --log result.jsonl
+python detector.py --source ..\..\data\videos\parking.mp4 --calib ... --no-show --log result.jsonl
 ```
 
 ## 核心判定逻辑
@@ -119,7 +120,7 @@ python detector.py --source ../data/videos/parking.mp4 --calib ... --no-show --l
 4. coverage 超过 0.35 判为占用
 5. **5 帧滑动窗口投票**，连续 3 帧一致才切换状态，压掉单帧抖动
 
-可调参数集中在 `vision/config.py` 的 `COVERAGE_THRESHOLD` 与 `SMOOTH_*`。
+可调参数集中在 `backend/vision/config.py` 的 `COVERAGE_THRESHOLD` 与 `SMOOTH_*`。
 
 ## 注意事项
 

@@ -5,38 +5,88 @@
 
 ---
 
-## 一、顶层目录职责
+## 一、顶层结构
 
-| 目录 | 职责 | 运行方式 | 阶段 |
-|---|---|---|---|
-| `vision/` | 视觉检测服务：读视频帧 → 检测车辆 → 判定车位状态 → 写库 | 独立进程 | 1 |
-| `server/` | Flask 业务后端：发布 / 预约 / 支付 / 核销 / 统计接口 | 独立进程 | 2-4 |
-| `web/` | Vue 3 前端：车位看板、预约页面、管理后台 | `npm run dev` | 5 |
-| `experiments/` | 论文对比实验，**不进主链路** | 手动跑 | 6 |
-| `scripts/` | 一次性脚本、维护工具，**不进主链路** | 手动跑 | 任意 |
-| `tests/` | 单元测试 | `pytest` | 任意 |
-| `sql/` | 建表 / 初始化脚本，`schema.sql` 是唯一建库入口 | 手动执行 | 2 |
-| `docs/` | 设计文档 | — | — |
-| `data/` | 运行期数据（大多不入库） | — | — |
-| `weights/` | YOLO 权重文件（**不入库**） | — | — |
-| `requirements/` | 依赖清单，按组拆分 | — | — |
+```
+shared-parking/
+├── backend/                服务端全部代码
+│   ├── vision/             视觉检测服务（独立进程）
+│   └── flask/              Flask 业务后端
+├── frontend/               前端
+├── databases/              数据库脚本
+├── docs/                   设计文档
+├── experiments/            论文对比实验（不进主链路）
+├── scripts/                一次性 / 维护脚本
+├── tests/                  单元测试
+├── weights/                YOLO 权重（不入库）
+├── data/                   运行期数据
+└── requirements/           依赖清单
+```
 
 ---
 
-## 二、`data/` 内部约定
+## 二、各目录职责
+
+| 目录 | 职责 | 运行方式 | 阶段 |
+|---|---|---|---|
+| `backend/vision/` | 读视频帧 → 检测车辆 → 判定车位状态 → 写库 | 独立进程 | 1 |
+| `backend/flask/` | 业务接口：发布 / 预约 / 支付 / 核销 / 统计 | 独立进程 | 2-4 |
+| `frontend/` | Vue 3：车位看板、预约页、管理后台 | `npm run dev` | 5 |
+| `databases/` | 建表 / 初始化数据，`schema.sql` 是唯一建库入口 | 手动执行 | 2 |
+| `experiments/` | 论文对比实验，**不进主链路** | 手动跑 | 6 |
+| `scripts/` | 一次性脚本、维护工具，**不进主链路** | 手动跑 | 任意 |
+| `tests/` | 单元测试 | `pytest` | 任意 |
+| `docs/` | 设计文档 | — | — |
+| `data/` | 运行期数据（大多不入库） | — | — |
+| `weights/` | YOLO 权重（**不入库**） | — | — |
+
+---
+
+## 三、`backend/` 为什么这样分
+
+```
+backend/
+├── vision/         独立进程：跑 YOLO，写 physical_status
+└── flask/          独立进程：处理 HTTP 请求，读写 business_status
+```
+
+**两个服务必须分开跑，不能合并**，原因见 `docs/TECH_STACK.md` 决策 D1：
+
+1. YOLO 模型加载要几秒，塞进 Flask 会让 Web 服务启动被拖住
+2. 模型实例不是线程安全的，检测线程和请求线程共用一个实例会崩
+3. 检测服务崩了不应该让整个网站挂掉，反之亦然
+
+所以 `backend/flask/` 下**不放任何模型代码**，它只负责业务逻辑和数据库读写。
+两者之间通过数据库字段通信，不直接调用函数。
+
+### `backend/flask/` 内部
+
+| 目录 | 放什么 | 举例 |
+|---|---|---|
+| `flask/models/` | 数据表的 Python 类映射 | `space.py`、`reservation.py` |
+| `flask/routes/` | 接口蓝图，一个业务模块一个文件 | `auth.py`、`space.py`、`order.py` |
+| `flask/services/` | 可复用的业务逻辑，不碰 HTTP 层 | `billing.py`（计费）、`verify.py`（核销） |
+
+判断规则：**能被两个以上路由调用的逻辑，就抽到 `services/`**；只服务一个接口的直接写在路由里。
+
+---
+
+## 四、`data/` 内部约定
 
 | 子目录 | 放什么 | 入库 | 说明 |
 |---|---|---|---|
-| `videos/` | 你拍的停车场视频 / 原图 | ❌ | 体积大；文件丢了重新拍即可 |
+| `videos/` | 你拍的停车场视频 / 原图 | ❌ | 体积大；丢了重新拍 |
 | `calibrations/` | 标定产物 `<场景名>.json` | ❌ | 可重新标定；换机后要重做 |
-| `snapshots/` | 检测截图（预约核销时留作取证） | ❌ | 运行期自动生成 |
-| `samples/` | 代码自测用的合成图 / 样例图 | ✅ | 体积小，保证 clone 后可跑通 |
+| `snapshots/` | 检测截图（核销取证用） | ❌ | 运行期自动生成 |
+| `samples/` | 代码自测用的合成图 | ✅ | 体积小，保证 clone 后可跑通 |
+
+`data/` 放在**项目根**而不是 `backend/` 下，因为视觉服务和后端都要读它（截图、标定），放任何一方里面都会让另一方绕路。
 
 **判断规则**：能用一条命令重新生成的，一律不入库；只有"重新获取需要人工成本"且"体积小"的才入库。
 
 ---
 
-## 三、命名约定
+## 五、命名约定
 
 | 类型 | 规则 | 示例 |
 |---|---|---|
@@ -52,40 +102,43 @@
 
 ---
 
-## 四、`scripts/` 与 `experiments/` 的区别
+## 六、`scripts/` 与 `experiments/` 的区别
 
 这两个目录都"不进主链路"，但性质不同：
 
 - `scripts/` —— **工具性**。合成测试图、批量重命名、数据迁移。跑完就结束，不产出论文数据。
-- `experiments/` —— **论证性**。跑对比实验、生成图表、产出论文里要引用的数字。结果必须可复现，脚本开头要写明"这篇实验回答什么问题"。
+- `experiments/` —— **论证性**。跑对比实验、生成图表、产出论文里要引用的数字。结果必须可复现，脚本开头要写明"这个实验回答什么问题"。
 
 `experiments/outputs/` 里的产物不入库，但生成它们的脚本必须入库。
 
 ---
 
-## 五、不入库清单（`.gitignore` 已覆盖）
+## 七、不入库清单（`.gitignore` 已覆盖）
 
 ```
-.env                密钥
-data/videos/*       视频
-data/snapshots/*    截图
-data/calibrations/*.json  标定结果
-weights/*.pt        模型权重
-experiments/outputs/*
-*.jsonl             检测日志
+.env                        密钥
+data/videos/*               视频
+data/snapshots/*            截图
+data/calibrations/*.json    标定结果
+weights/*.pt                模型权重
+experiments/outputs/*       实验产物
+*.jsonl                     检测日志
+.idea/ .vscode/             IDE 配置
+venv/ .venv/                虚拟环境
 ```
 
 ---
 
-## 六、新增代码时该放哪
+## 八、新增代码时该放哪
 
 | 你想做的事 | 放哪 |
 |---|---|
-| 加一个检测后处理算法 | `vision/` |
-| 加一个业务接口 | `server/routes/` |
-| 加一段可复用的业务逻辑（如计费） | `server/services/` |
-| 加一张表的 ORM 模型 | `server/models/` |
-| 加一个前端页面 | `web/src/views/` |
+| 加一个检测后处理算法 | `backend/vision/` |
+| 加一个业务接口 | `backend/flask/routes/` |
+| 加一段可复用的业务逻辑（如计费） | `backend/flask/services/` |
+| 加一张表的 ORM 模型 | `backend/flask/models/` |
+| 加建表语句 | `databases/` |
+| 加一个前端页面 | `frontend/src/views/` |
 | 验证某个算法比另一个准 | `experiments/` |
 | 临时合成一张测试图 | `scripts/` |
 
