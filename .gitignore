@@ -46,3 +46,7 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# WorkBuddy 项目数据：只保留 memory 笔记，其余会话/缓存不入库
+.workbuddy/*
+!.workbuddy/memory/
