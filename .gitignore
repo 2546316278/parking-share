@@ -4,6 +4,10 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
 
 # 环境变量与密钥
 .env
@@ -16,6 +20,10 @@ data/calibrations/*.json
 !data/videos/.gitkeep
 !data/snapshots/.gitkeep
 !data/calibrations/.gitkeep
+!data/samples/.gitkeep
+
+# 检测过程日志
+*.jsonl
 
 # 模型权重
 *.pt
@@ -24,7 +32,8 @@ data/calibrations/*.json
 
 # 训练与实验产物
 runs/
-experiments/outputs/
+experiments/outputs/*
+!experiments/outputs/.gitkeep
 
 # 前端
 node_modules/

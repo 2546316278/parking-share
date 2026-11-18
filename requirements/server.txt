@@ -1,0 +1,9 @@
+# ---------- 服务组 ----------
+# Flask 业务后端（server/）。可安全安装：不涉及 CUDA / torch。
+Flask==3.1.2
+Flask-Cors==6.0.1
+PyMySQL==1.4.6
+PyJWT==2.15.1
+bcrypt==5.0.0
+APScheduler==3.11.3
+python-dotenv==1.0.1

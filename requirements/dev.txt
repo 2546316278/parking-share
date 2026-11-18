@@ -1,0 +1,7 @@
+# ---------- 实验与开发组 ----------
+# 论文对比实验的绘图/统计（experiments/）+ 单元测试（tests/）
+pandas==2.3.3
+matplotlib==3.9.4
+tqdm==4.67.1
+requests==2.32.5
+pytest==8.4.2

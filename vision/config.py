@@ -16,9 +16,10 @@ DATA_DIR = BASE_DIR / "data"
 VIDEO_DIR = DATA_DIR / "videos"
 CALIB_DIR = DATA_DIR / "calibrations"
 SNAPSHOT_DIR = DATA_DIR / "snapshots"
-MODEL_DIR = BASE_DIR / "models"
+SAMPLE_DIR = DATA_DIR / "samples"
+WEIGHT_DIR = BASE_DIR / "weights"
 
-for _d in (VIDEO_DIR, CALIB_DIR, SNAPSHOT_DIR, MODEL_DIR):
+for _d in (VIDEO_DIR, CALIB_DIR, SNAPSHOT_DIR, SAMPLE_DIR, WEIGHT_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ==================== 检测参数 ====================

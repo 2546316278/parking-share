@@ -76,11 +76,11 @@ def imwrite_unicode(path: str, image: np.ndarray) -> bool:
 
 
 def resolve_model(path: str) -> str:
-    """优先使用 models/ 下的本地权重，找不到再交给 ultralytics 自动下载。"""
+    """优先使用 weights/ 下的本地权重，找不到再交给 ultralytics 自动下载。"""
     p = Path(path)
     if p.is_absolute() and p.exists():
         return str(p)
-    local = cfg.MODEL_DIR / p.name
+    local = cfg.WEIGHT_DIR / p.name
     if local.exists():
         return str(local)
     if Path(p.name).exists():
