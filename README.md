@@ -11,7 +11,7 @@
 |---|---|---|
 | 0 | 项目骨架、环境、技术栈定稿 | ✅ 完成 |
 | 1 | 视觉检测链路（标定 + 车辆检测 + 状态判定） | ✅ 基础链路跑通，待真实素材验证 |
-| 2 | 数据库设计与状态写入 | ⬜ 待做 |
+| 2 | 数据库设计与状态写入 | 🟡 7 张表已建（`databases/schema.sql`），待接入 Spring Boot |
 | 3 | 业务接口（发布 / 预约 / 支付） | ⬜ 待做 |
 | 4 | 自动核销与超时处理 | ⬜ 待做 |
 | 5 | 前端看板与统计 | ⬜ 待做 |
@@ -37,7 +37,7 @@ shared-parking/
 │           ├── entity/        数据表映射
 │           └── config/        配置类
 ├── frontend/              Vue 3 前端
-├── databases/             建表脚本，schema.sql 为唯一入口
+├── databases/             建表脚本，schema.sql 为唯一入口，设计说明见 README.md
 ├── experiments/           论文对比实验，不进主链路
 │   └── outputs/           实验产物（不入库）
 ├── scripts/               一次性 / 维护脚本，不进主链路
@@ -127,7 +127,17 @@ python detector.py --source 0 --calib ..\..\data\calibrations\parking.json
 python detector.py --source ..\..\data\videos\parking.mp4 --calib ... --no-show --log result.jsonl
 ```
 
-### 3. 启动业务后端
+### 3. 建库
+
+```bash
+cd D:\shared-parking
+"D:/mys/mysql-5.7.24-winx64/bin/mysql.exe" -uroot -p1234 --default-character-set=utf8mb4 < databases/schema.sql
+```
+
+7 张表 + 种子数据，`--default-character-set=utf8mb4` 不能省（服务端默认 latin1，不加会乱码）。
+表结构、双状态字段用法、常用查询见 [databases/README.md](databases/README.md)。
+
+### 4. 启动业务后端
 
 ```bash
 cd backend\springboot
