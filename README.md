@@ -11,8 +11,8 @@
 |---|---|---|
 | 0 | 项目骨架、环境、技术栈定稿 | ✅ 完成 |
 | 1 | 视觉检测链路（标定 + 车辆检测 + 状态判定） | ✅ 基础链路跑通，待真实素材验证 |
-| 2 | 数据库设计与状态写入 | 🟡 7 张表已建（`databases/schema.sql`），待接入 Spring Boot |
-| 3 | 业务接口（发布 / 预约 / 支付） | ⬜ 待做 |
+| 2 | 数据库设计与状态写入 | ✅ 7 张表已建（`databases/schema.sql`），Spring Boot 已接入 |
+| 3 | 业务接口（发布 / 预约 / 支付） | 🟡 车位查询完成，待做发布与预约 |
 | 4 | 自动核销与超时处理 | ⬜ 待做 |
 | 5 | 前端看板与统计 | ⬜ 待做 |
 | 6 | 对比实验与论文图表 | ⬜ 待做 |
@@ -31,10 +31,12 @@ shared-parking/
 │   └── springboot/        业务后端（Java，独立进程）
 │       ├── pom.xml
 │       └── src/main/java/com/sharedparking/
+│           ├── common/        统一响应封装
 │           ├── controller/    接口层
 │           ├── service/       业务逻辑（计费、核销）
-│           ├── mapper/        数据访问
+│           ├── mapper/        数据访问（MyBatis-Plus）
 │           ├── entity/        数据表映射
+│           ├── dto/           出入参对象
 │           └── config/        配置类
 ├── frontend/              Vue 3 前端
 ├── databases/             建表脚本，schema.sql 为唯一入口，设计说明见 README.md
@@ -75,7 +77,7 @@ conda activate yolov8_env
 
 - JDK 22（`C:\Program Files\Java\jdk-22`）
 - Maven 3.9+
-- MySQL 8.x（阶段 2 接入，字符集必须 utf8mb4）
+- MySQL 5.7.24（`D:\mys\mysql-5.7.24-winx64`，root/1234，字符集必须显式指定 utf8mb4）
 
 > Python 和 Java 是两个独立进程，各自用各自的终端启动，互不依赖。
 
@@ -144,10 +146,15 @@ cd backend\springboot
 mvn -DskipTests package
 
 # 注意：不要直接用 java，PATH 里的 java 可能是 JDK 8
-"C:/Program Files/Java/jdk-22/bin/java.exe" -jar target/shared-parking-backend-1.0.0.jar
+"C:/Program Files/Java/jdk-22/bin/java.exe" -jar target/shared-parking-0.0.1-SNAPSHOT.jar
 ```
 
-验证：浏览器打开 http://localhost:8080/api/health ，应返回 `{"status":"UP",...}`。
+验证：
+
+```bash
+curl http://localhost:8080/api/health     # {"status":"UP",...}
+curl http://localhost:8080/api/spaces     # 返回 A01-A03 三个车位
+```
 
 > ⚠️ **JDK 版本陷阱**：PATH 里 `C:\Program Files\Common Files\Oracle\Java\javapath` 指向 JDK 8 且排在前面，
 > 直接敲 `java -jar` 会报 `UnsupportedClassVersionError`。Maven 读 `JAVA_HOME`（JDK 22）所以编译正常，

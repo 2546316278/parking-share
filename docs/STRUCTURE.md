@@ -67,21 +67,30 @@ springboot/
 ├── pom.xml
 └── src/main/java/com/sharedparking/
     ├── ParkingApplication.java   启动类
+    ├── common/                   通用响应封装（Result）
     ├── controller/               接口层，一个业务模块一个类
     ├── service/                  业务逻辑
     ├── mapper/                   数据访问（MyBatis-Plus）
     ├── entity/                   数据表映射
+    ├── dto/                      出入参对象（SpaceVO 等）
     └── config/                   配置类
 ```
 
 | 包 | 放什么 | 举例 |
 |---|---|---|
+| `common/` | 跨模块复用的基础类 | `Result`（统一响应）、后续的 `BizException` |
 | `controller/` | HTTP 接口，只做参数接收与响应封装 | `SpaceController.java`、`OrderController.java` |
 | `service/` | 可复用的业务逻辑，不碰 HTTP 层 | `BillingService`（计费）、`VerifyService`（核销） |
-| `mapper/` | 数据访问接口 | `SpaceMapper.java` |
-| `entity/` | 数据表对应的实体类 | `Space.java`、`Reservation.java` |
+| `mapper/` | 数据访问接口，继承 `BaseMapper` | `SpaceMapper.java` |
+| `entity/` | 数据表对应的实体类，字段与表一一对应 | `Space.java`、`Reservation.java` |
+| `dto/` | 给前端看的出入参对象，不放数据库映射 | `SpaceVO.java`、后续的 `ReserveRequest` |
+| `config/` | 配置类 | `JacksonConfig`（时间格式）、后续的 `MyBatisPlusConfig`（分页） |
 
 判断规则：**能被两个以上接口调用的逻辑，就抽到 `service/`**；只服务一个接口的直接写在 controller 里。
+
+**entity 与 dto 的区别**：entity 是数据库表的镜像，字段全是英文枚举值；dto 是给前端看的，
+可以加中文描述字段（如 `displayStatus`）和计算字段（如 `physicalStale`）。
+不要让 controller 直接返回 entity —— 字段一多，前端就得自己翻译一遍枚举，每个页面重复写。
 
 ---
 
@@ -151,6 +160,7 @@ venv/ .venv/                虚拟环境
 | 加一个业务接口 | `backend/springboot/.../controller/` |
 | 加一段可复用的业务逻辑（如计费） | `backend/springboot/.../service/` |
 | 加一张表的实体类 | `backend/springboot/.../entity/` |
+| 给前端加一个返回结构 | `backend/springboot/.../dto/` |
 | 加建表语句 | `databases/` |
 | 加一个前端页面 | `frontend/src/views/` |
 | 验证某个算法比另一个准 | `experiments/` |
