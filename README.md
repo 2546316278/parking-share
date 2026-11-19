@@ -10,8 +10,7 @@
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | 0 | 项目骨架、环境、技术栈定稿 | ✅ 完成 |
-| 1a | 视觉检测链路（标定 + 车辆检测 + 状态判定） | ✅ 基础链路跑通，待真实素材验证 |
-| 1b | 车牌识别（入口抓拍，记录入场车牌与时间） | ✅ 复用旧项目已训练权重，测试集整牌准确率 91% |
+| 1 | 视觉检测链路（标定 + 车辆检测 + 状态判定） | ✅ 基础链路跑通，待真实素材验证 |
 | 2 | 数据库设计与状态写入 | ⬜ 待做 |
 | 3 | 业务接口（发布 / 预约 / 支付） | ⬜ 待做 |
 | 4 | 自动核销与超时处理 | ⬜ 待做 |
@@ -23,17 +22,20 @@
 ```
 shared-parking/
 ├── backend/               服务端全部代码
-│   ├── vision/            视觉服务（独立进程）
+│   ├── vision/            视觉服务（Python，独立进程）
 │   │   ├── config.py      所有可调参数，调参只改这一个文件
 │   │   ├── calibrate.py   车位 ROI 标定工具
 │   │   ├── detector.py    车辆检测 + 占用判定 + 标注输出
 │   │   ├── smoother.py    车位状态时序平滑
-│   │   ├── plate.py       车牌识别（入口抓拍）
 │   │   └── utils.py       中文路径读写、模型路径解析
-│   └── flask/             Flask 业务后端
-│       ├── models/        数据表 ORM 模型
-│       ├── routes/        接口蓝图
-│       └── services/      可复用业务逻辑（计费、核销）
+│   └── springboot/        业务后端（Java，独立进程）
+│       ├── pom.xml
+│       └── src/main/java/com/sharedparking/
+│           ├── controller/    接口层
+│           ├── service/       业务逻辑（计费、核销）
+│           ├── mapper/        数据访问
+│           ├── entity/        数据表映射
+│           └── config/        配置类
 ├── frontend/              Vue 3 前端
 ├── databases/             建表脚本，schema.sql 为唯一入口
 ├── experiments/           论文对比实验，不进主链路
@@ -58,6 +60,8 @@ shared-parking/
 
 ## 环境
 
+**视觉服务（Python）**
+
 - Python 3.9.24（conda 环境 `yolov8_env`）
 - torch 2.6.0+cu118 / ultralytics 8.3.237 / opencv 4.6.0 / numpy 1.26.4
 - 装依赖：`pip install -r requirements.txt`（只含服务组与实验组）
@@ -66,6 +70,14 @@ shared-parking/
 ```bash
 conda activate yolov8_env
 ```
+
+**业务后端（Java）**
+
+- JDK 22（`C:\Program Files\Java\jdk-22`）
+- Maven 3.9+
+- MySQL 8.x（阶段 2 接入，字符集必须 utf8mb4）
+
+> Python 和 Java 是两个独立进程，各自用各自的终端启动，互不依赖。
 
 ## 快速开始
 
@@ -115,38 +127,21 @@ python detector.py --source 0 --calib ..\..\data\calibrations\parking.json
 python detector.py --source ..\..\data\videos\parking.mp4 --calib ... --no-show --log result.jsonl
 ```
 
-### 3. 车牌识别（入口抓拍）
-
-先用 YOLO 定位车牌，再用 PaddleOCR 识别字符，输出车牌号并保存抓拍存证。
+### 3. 启动业务后端
 
 ```bash
-cd backend\vision
+cd backend\springboot
+mvn -DskipTests package
 
-# 单张图片
-python plate.py --source ..\..\data\samples\plate_sample_1.jpg --no-show
-
-# 摄像头（实时识别，按 s 抓拍，q 退出）
-python plate.py --source 0
-
-# 视频（只处理前 100 帧）
-python plate.py --source ..\..\data\videos\gate.mp4 --limit 100
+# 注意：不要直接用 java，PATH 里的 java 可能是 JDK 8
+"C:/Program Files/Java/jdk-22/bin/java.exe" -jar target/shared-parking-backend-1.0.0.jar
 ```
 
-输出：
+验证：浏览器打开 http://localhost:8080/api/health ，应返回 `{"status":"UP",...}`。
 
-```
-[init] 车牌模型: weights\LP-detection.pt | OCR GPU: False
-[result] 耗时 152.1 ms | 检测到 1 块车牌
-   皖AYC575    det=0.83 ocr=0.94
-[车牌] 皖AYC575
-[snapshot] data\snapshots\20261118_183028_皖AYC575_raw.jpg
-```
-
-抓拍图默认存到 `data/snapshots/`（原图和标注图各一份），加 `--no-snapshot` 关闭。
-
-> ⚠️ 权重不入库。`weights/LP-detection.pt` 换机时从旧项目 `D:\停车场\backend\models\` 复制过来。
-
-**import 顺序陷阱**：`plate.py` 顶部 `import torch` 必须写在 `paddle` 之前，反过来会让 torch 报 `OSError: [WinError 127] 找不到指定的程序`。这是两个框架的 MKL DLL 冲突，改代码时不要调整这几行顺序。
+> ⚠️ **JDK 版本陷阱**：PATH 里 `C:\Program Files\Common Files\Oracle\Java\javapath` 指向 JDK 8 且排在前面，
+> 直接敲 `java -jar` 会报 `UnsupportedClassVersionError`。Maven 读 `JAVA_HOME`（JDK 22）所以编译正常，
+> 但运行时必须用绝对路径或先把 JDK 22 的 bin 调到 PATH 前面。详见 `backend/springboot/README.md`。
 
 ## 核心判定逻辑
 

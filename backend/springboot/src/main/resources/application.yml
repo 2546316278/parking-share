@@ -1,0 +1,25 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: shared-parking
+
+# ==================== 数据库（阶段 2 启用） ====================
+# 建库语句见 databases/schema.sql。建库时务必指定 utf8mb4，
+# 否则车位编号、中文备注会存成问号。
+#
+# spring:
+#   datasource:
+#     url: jdbc:mysql://localhost:3306/shared_parking?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_general_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+#     username: ${DB_USER:root}
+#     password: ${DB_PASSWORD:1234}
+#     driver-class-name: com.mysql.cj.jdbc.Driver
+#
+# 时区必须与 Python 视觉进程、MySQL 服务器保持一致，
+# 否则入场时间会差 8 小时，直接影响计费。
+
+logging:
+  level:
+    root: info
+    com.sharedparking: debug

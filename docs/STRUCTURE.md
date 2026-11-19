@@ -10,8 +10,8 @@
 ```
 shared-parking/
 ├── backend/                服务端全部代码
-│   ├── vision/             视觉检测服务（独立进程）
-│   └── flask/              Flask 业务后端
+│   ├── vision/             视觉检测服务（Python，独立进程）
+│   └── springboot/         业务后端（Java）
 ├── frontend/               前端
 ├── databases/              数据库脚本
 ├── docs/                   设计文档
@@ -29,8 +29,8 @@ shared-parking/
 
 | 目录 | 职责 | 运行方式 | 阶段 |
 |---|---|---|---|
-| `backend/vision/` | 车位状态检测（`detector.py`）+ 车牌识别（`plate.py`），独立进程 | 独立进程 | 1 |
-| `backend/flask/` | 业务接口：发布 / 预约 / 支付 / 核销 / 统计 | 独立进程 | 2-4 |
+| `backend/vision/` | 车位状态检测（`detector.py`），独立进程 | 独立进程 | 1 |
+| `backend/springboot/` | 业务接口：发布 / 预约 / 支付 / 核销 / 统计 | 独立进程 | 2-4 |
 | `frontend/` | Vue 3：车位看板、预约页、管理后台 | `npm run dev` | 5 |
 | `databases/` | 建表 / 初始化数据，`schema.sql` 是唯一建库入口 | 手动执行 | 2 |
 | `experiments/` | 论文对比实验，**不进主链路** | 手动跑 | 6 |
@@ -46,28 +46,42 @@ shared-parking/
 
 ```
 backend/
-├── vision/         独立进程：跑 YOLO，写 physical_status
-└── flask/          独立进程：处理 HTTP 请求，读写 business_status
+├── vision/         独立进程：Python + YOLO，写 physical_status
+└── springboot/     独立进程：Java，处理 HTTP 请求，读写 business_status
 ```
 
 **两个服务必须分开跑，不能合并**，原因见 `docs/TECH_STACK.md` 决策 D1：
 
-1. YOLO 模型加载要几秒，塞进 Flask 会让 Web 服务启动被拖住
-2. 模型实例不是线程安全的，检测线程和请求线程共用一个实例会崩
-3. 检测服务崩了不应该让整个网站挂掉，反之亦然
+1. YOLOv8 是 Python 生态，无法在 JVM 内运行
+2. 模型加载要几秒，塞进 Web 服务会拖慢启动
+3. 模型实例不是线程安全的，检测线程和请求线程共用一个实例会崩
+4. 检测服务崩了不应该让整个网站挂掉，反之亦然
 
-所以 `backend/flask/` 下**不放任何模型代码**，它只负责业务逻辑和数据库读写。
+所以 `backend/springboot/` 下**不放任何模型代码**，它只负责业务逻辑和数据库读写。
 两者之间通过数据库字段通信，不直接调用函数。
 
-### `backend/flask/` 内部
+### `backend/springboot/` 内部
 
-| 目录 | 放什么 | 举例 |
+```
+springboot/
+├── pom.xml
+└── src/main/java/com/sharedparking/
+    ├── ParkingApplication.java   启动类
+    ├── controller/               接口层，一个业务模块一个类
+    ├── service/                  业务逻辑
+    ├── mapper/                   数据访问（MyBatis-Plus）
+    ├── entity/                   数据表映射
+    └── config/                   配置类
+```
+
+| 包 | 放什么 | 举例 |
 |---|---|---|
-| `flask/models/` | 数据表的 Python 类映射 | `space.py`、`reservation.py` |
-| `flask/routes/` | 接口蓝图，一个业务模块一个文件 | `auth.py`、`space.py`、`order.py` |
-| `flask/services/` | 可复用的业务逻辑，不碰 HTTP 层 | `billing.py`（计费）、`verify.py`（核销） |
+| `controller/` | HTTP 接口，只做参数接收与响应封装 | `SpaceController.java`、`OrderController.java` |
+| `service/` | 可复用的业务逻辑，不碰 HTTP 层 | `BillingService`（计费）、`VerifyService`（核销） |
+| `mapper/` | 数据访问接口 | `SpaceMapper.java` |
+| `entity/` | 数据表对应的实体类 | `Space.java`、`Reservation.java` |
 
-判断规则：**能被两个以上路由调用的逻辑，就抽到 `services/`**；只服务一个接口的直接写在路由里。
+判断规则：**能被两个以上接口调用的逻辑，就抽到 `service/`**；只服务一个接口的直接写在 controller 里。
 
 ---
 
@@ -90,7 +104,7 @@ backend/
 
 | 类型 | 规则 | 示例 |
 |---|---|---|
-| Python 模块 | 小写 + 下划线 | `detector.py`、`license_plate.py` |
+| Python 模块 | 小写 + 下划线 | `detector.py`、`smoother.py` |
 | 类 | 大驼峰 | `ParkingDetector`、`StatusSmoother` |
 | 函数 / 变量 | 小写下划线 | `_assign_vehicles`、`coverage` |
 | 常量 | 全大写 | `COVERAGE_THRESHOLD` |
@@ -134,9 +148,9 @@ venv/ .venv/                虚拟环境
 | 你想做的事 | 放哪 |
 |---|---|
 | 加一个检测后处理算法 | `backend/vision/` |
-| 加一个业务接口 | `backend/flask/routes/` |
-| 加一段可复用的业务逻辑（如计费） | `backend/flask/services/` |
-| 加一张表的 ORM 模型 | `backend/flask/models/` |
+| 加一个业务接口 | `backend/springboot/.../controller/` |
+| 加一段可复用的业务逻辑（如计费） | `backend/springboot/.../service/` |
+| 加一张表的实体类 | `backend/springboot/.../entity/` |
 | 加建表语句 | `databases/` |
 | 加一个前端页面 | `frontend/src/views/` |
 | 验证某个算法比另一个准 | `experiments/` |
